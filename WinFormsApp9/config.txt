@@ -1,0 +1,4 @@
+﻿BallSpeedX=4
+BallSpeedY=4
+PaddleSpeed=20
+PowerUpFrequency=4

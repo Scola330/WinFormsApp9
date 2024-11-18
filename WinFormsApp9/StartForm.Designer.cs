@@ -28,22 +28,18 @@
         /// </summary>
         private void InitializeComponent()
         {
-            StartButton = new Button();
+            label1 = new Label();
             SuspendLayout();
             // 
-            // StartButton
+            // label1
             // 
-            StartButton.BackColor = Color.Black;
-            StartButton.Cursor = Cursors.Cross;
-            StartButton.ForeColor = Color.White;
-            StartButton.Location = new Point(135, 256);
-            StartButton.Margin = new Padding(0);
-            StartButton.Name = "StartButton";
-            StartButton.Size = new Size(516, 107);
-            StartButton.TabIndex = 0;
-            StartButton.Text = "START";
-            StartButton.UseVisualStyleBackColor = false;
-            StartButton.Click += StartButton_Click;
+            label1.AutoSize = true;
+            label1.ForeColor = SystemColors.ButtonFace;
+            label1.Location = new Point(26, 418);
+            label1.Name = "label1";
+            label1.Size = new Size(72, 15);
+            label1.TabIndex = 0;
+            label1.Text = "version 1.0.0";
             // 
             // StartForm
             // 
@@ -51,15 +47,16 @@
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.Black;
             ClientSize = new Size(800, 450);
-            Controls.Add(StartButton);
+            Controls.Add(label1);
             Cursor = Cursors.Cross;
             Name = "StartForm";
             Text = "StartForm";
             ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
 
-        private Button StartButton;
+        private Label label1;
     }
 }

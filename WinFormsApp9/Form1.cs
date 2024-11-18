@@ -3,39 +3,48 @@ namespace WinFormsApp9
     public partial class Form1 : Form
     {
         private System.Windows.Forms.Timer timer = null!;
+        private System.Windows.Forms.Timer powerUpTimer = null!;
         private PictureBox ball = null!;
         private PictureBox paddle = null!;
         private PictureBox[] blocks = null!;
-        private int ballSpeedX = 4;
-        private int ballSpeedY = 4;
-        private int paddlePositionX; // Dodanie zmiennej do przechowywania pozycji paletki
-        private readonly int paddleSpeed = 20; // Dodanie zmiennej do kontrolowania prêdkoœci paletki
+        private List<PowerUp> activePowerUps = new List<PowerUp>();
+        private int ballSpeedX;
+        private int ballSpeedY;
+        private int paddlePositionX;
+        private readonly int paddleSpeed;
+        private bool isMovingLeft = false;
+        private bool isMovingRight = false;
+        private int powerUpCount;
 
-        public Form1()
+        public Form1(int ballSpeed, int paddleSpeed, int powerUpCount)
         {
+            this.ballSpeedX = ballSpeed;
+            this.ballSpeedY = ballSpeed;
+            this.paddleSpeed = paddleSpeed;
+            this.powerUpCount = powerUpCount;
+
             InitializeComponent();
             InitializeGame();
+            this.Resize += Form1_Resize;
+        }
+
+        private void Form1_Resize(object? sender, EventArgs e)
+        {
+            ResizeGameElements();
         }
 
         private void InitializeGame()
         {
             // Ustawienia formularza
-            if (Screen.PrimaryScreen != null)
-            {
-                this.Width = Screen.PrimaryScreen.Bounds.Width;
-            }
-            this.Height = 600;
-            this.Text = "Arkanoid";
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.WindowState = FormWindowState.Maximized;
+            this.TopMost = true;
 
             // Tworzenie pi³ki
             ball = new PictureBox
             {
-                Width = this.ClientSize.Width / 40,
-                Height = this.ClientSize.Width / 40,
                 BackColor = Color.Transparent,
-                BorderStyle = BorderStyle.FixedSingle, // Dodanie obramowania
-                Left = this.ClientSize.Width / 2,
-                Top = this.ClientSize.Height / 2
+                BorderStyle = BorderStyle.FixedSingle
             };
             this.Controls.Add(ball);
 
@@ -48,12 +57,8 @@ namespace WinFormsApp9
             // Tworzenie paletki
             paddle = new PictureBox
             {
-                Width = this.ClientSize.Width / 8,
-                Height = this.ClientSize.Height / 30,
                 BackColor = Color.Transparent,
-                BorderStyle = BorderStyle.FixedSingle,
-                Left = (this.ClientSize.Width - (this.ClientSize.Width / 8)) / 2, // Ustawienie paletki na œrodku
-                Top = this.ClientSize.Height - (this.ClientSize.Height / 12)
+                BorderStyle = BorderStyle.FixedSingle
             };
             this.Controls.Add(paddle);
 
@@ -64,8 +69,6 @@ namespace WinFormsApp9
             };
 
             // Tworzenie bloków
-            int blockWidth = this.ClientSize.Width / 10;
-            int blockHeight = this.ClientSize.Height / 20;
             int blockRows = 5;
             int blockCols = 10;
             blocks = new PictureBox[blockRows * blockCols];
@@ -76,12 +79,8 @@ namespace WinFormsApp9
                 {
                     PictureBox block = new PictureBox
                     {
-                        Width = blockWidth,
-                        Height = blockHeight,
                         BackColor = Color.Transparent,
-                        BorderStyle = BorderStyle.FixedSingle,
-                        Left = col * blockWidth,
-                        Top = row * blockHeight
+                        BorderStyle = BorderStyle.FixedSingle
                     };
                     block.Paint += (s, e) =>
                     {
@@ -100,15 +99,68 @@ namespace WinFormsApp9
             timer.Tick += Timer_Tick;
             timer.Start();
 
+            // Tworzenie timera dla power-upów
+            powerUpTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 50
+            };
+            powerUpTimer.Tick += PowerUpTimer_Tick;
+            powerUpTimer.Start();
+
             // Obs³uga zdarzeñ klawiatury
             this.KeyDown += Form1_KeyDown;
             this.KeyUp += Form1_KeyUp;
+
+            // Dostosowanie rozmiaru i pozycji elementów
+            ResizeGameElements();
+        }
+
+        private void ResizeGameElements()
+        {
+            // Dostosowanie rozmiaru i pozycji pi³ki
+            ball.Width = this.ClientSize.Width / 40;
+            ball.Height = this.ClientSize.Width / 40;
+            ball.Left = this.ClientSize.Width / 2 - (this.ClientSize.Width / 80);
+            ball.Top = this.ClientSize.Height / 2 - (this.ClientSize.Width / 80);
+
+            // Dostosowanie rozmiaru i pozycji paletki
+            paddle.Width = this.ClientSize.Width / 8;
+            paddle.Height = this.ClientSize.Height / 30;
+            paddle.Left = (this.ClientSize.Width - paddle.Width) / 2;
+            paddle.Top = this.ClientSize.Height - (this.ClientSize.Height / 12);
+
+            // Dostosowanie rozmiaru i pozycji bloków
+            int blockRows = 5;
+            int blockCols = 10;
+            int blockWidth = this.ClientSize.Width / blockCols;
+            int blockHeight = this.ClientSize.Height / 20;
+
+            for (int row = 0; row < blockRows; row++)
+            {
+                for (int col = 0; col < blockCols; col++)
+                {
+                    var block = blocks[row * blockCols + col];
+                    if (block != null)
+                    {
+                        block.Width = blockWidth;
+                        block.Height = blockHeight;
+                        block.Left = col * blockWidth;
+                        block.Top = row * blockHeight;
+                    }
+                }
+            }
         }
 
         private void Timer_Tick(object? sender, EventArgs e)
         {
             MoveBall();
+            MovePaddle();
             CheckCollision();
+        }
+
+        private void PowerUpTimer_Tick(object? sender, EventArgs e)
+        {
+            MovePowerUps();
         }
 
         private void MoveBall()
@@ -135,6 +187,18 @@ namespace WinFormsApp9
             }
         }
 
+        private void MovePaddle()
+        {
+            if (isMovingLeft && paddle.Left > 0)
+            {
+                paddle.Left -= paddleSpeed;
+            }
+            if (isMovingRight && paddle.Right < this.ClientSize.Width)
+            {
+                paddle.Left += paddleSpeed;
+            }
+        }
+
         private void CheckCollision()
         {
             // Odbicie od paletki
@@ -153,50 +217,127 @@ namespace WinFormsApp9
                     ballSpeedY = -ballSpeedY;
                     this.Controls.Remove(block);
                     Console.Beep(500, 20);
-                    blocks[i] = default!; // Usuniêcie klocka z tablicy
+                    blocks[i] = default!;
+
+                    // Losowe przypisanie power-upów do klocków
+                    Random random = new Random();
+                    if (random.Next(4) == 0 && powerUpCount > 0) // 1 na 4 klocki
+                    {
+                        PowerUpType powerUpType = (PowerUpType)random.Next(2);
+                        PowerUp powerUp = new PowerUp(powerUpType, block.Left, block.Top, block.Width, block.Height);
+                        activePowerUps.Add(powerUp);
+                        this.Controls.Add(powerUp.PowerUpPictureBox);
+                        powerUpCount--;
+                    }
                     break;
                 }
             }
         }
 
+        private void MovePowerUps()
+        {
+            foreach (var powerUp in activePowerUps.ToList())
+            {
+                powerUp.PowerUpPictureBox.Top += powerUp.PowerUpSpeed;
+
+                // Miganie power-upów
+                powerUp.PowerUpPictureBox.Visible = !powerUp.PowerUpPictureBox.Visible;
+
+                // Usuwanie power-upów, które spad³y na dó³
+                if (powerUp.PowerUpPictureBox.Top >= this.ClientSize.Height)
+                {
+                    this.Controls.Remove(powerUp.PowerUpPictureBox);
+                    activePowerUps.Remove(powerUp);
+                }
+                // Kolizja z paletk¹
+                else if (paddle.Bounds.IntersectsWith(powerUp.PowerUpPictureBox.Bounds))
+                {
+                    ApplyPowerUp(powerUp);
+                    this.Controls.Remove(powerUp.PowerUpPictureBox);
+                    activePowerUps.Remove(powerUp);
+                }
+            }
+        }
+
+        private void ApplyPowerUp(PowerUp powerUp)
+        {
+            if (powerUp.PowerUpType == PowerUpType.SlowBall)
+            {
+                ballSpeedX /= 2;
+                ballSpeedY /= 2;
+                Console.Beep(200, 20);
+            }
+            else if (powerUp.PowerUpType == PowerUpType.ExpandPaddle)
+            {
+                paddle.Width *= 2;
+                Console.Beep(200, 20);
+            }
+
+            // Ustawienie timera dla power-upa
+            var powerUpTimer = new System.Windows.Forms.Timer
+            {
+                Interval = 55000 // 55 sekund
+            };
+            powerUpTimer.Tick += (s, e) => RemovePowerUpEffect(powerUp, powerUpTimer);
+            powerUpTimer.Start();
+        }
+
+        private void RemovePowerUpEffect(PowerUp powerUp, System.Windows.Forms.Timer powerUpTimer)
+        {
+            if (powerUp.PowerUpType == PowerUpType.SlowBall)
+            {
+                ballSpeedX *= 2;
+                ballSpeedY *= 2;
+            }
+            else if (powerUp.PowerUpType == PowerUpType.ExpandPaddle)
+            {
+                paddle.Width /= 2;
+            }
+
+            powerUpTimer.Stop();
+            powerUpTimer.Dispose();
+        }
         private void Form1_KeyDown(object? sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left)
             {
-                paddle.Left -= paddleSpeed;
+                isMovingLeft = true;
             }
             else if (e.KeyCode == Keys.Right)
             {
-                paddle.Left += paddleSpeed;
+                isMovingRight = true;
             }
             else if (e.KeyCode == Keys.Enter)
             {
-                paddlePositionX = paddle.Left; // Zapisz pozycjê paletki przed resetem
+                paddlePositionX = paddle.Left;
                 ResetGame();
             }
-
-            // Dopasowanie po³o¿enia paletki do wysokoœci ekranu
-            if (paddle.Left < 0)
+            else if (e.KeyCode == Keys.Escape)
             {
-                paddle.Left = 0;
+                Application.Exit();
             }
-            if (paddle.Right > this.ClientSize.Width)
+        }
+
+        private void Form1_KeyUp(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Left)
             {
-                paddle.Left = this.ClientSize.Width - paddle.Width;
+                isMovingLeft = false;
+            }
+            else if (e.KeyCode == Keys.Right)
+            {
+                isMovingRight = false;
             }
         }
 
         private void ResetGame()
         {
             timer.Stop();
+            powerUpTimer.Stop();
             this.Controls.Clear();
             InitializeGame();
-            timer.Start(); // Uruchomienie timera po ponownej inicjalizacji gry
-        }
-
-        private void Form1_KeyUp(object? sender, KeyEventArgs e)
-        {
-            // Mo¿na dodaæ dodatkowe funkcjonalnoœci
+            timer.Start();
+            powerUpTimer.Start();
         }
 
         private void Form1_Load(object? sender, EventArgs e)
@@ -204,4 +345,32 @@ namespace WinFormsApp9
             // Mo¿na dodaæ dodatkowe funkcjonalnoœci
         }
     }
+    }
+    
+
+public class PowerUp
+{
+    public PowerUpType PowerUpType { get; }
+    public PictureBox PowerUpPictureBox { get; }
+    public int PowerUpSpeed { get; }
+
+    public PowerUp(PowerUpType powerUpType, int x, int y, int width, int height)
+    {
+        PowerUpType = powerUpType;
+        PowerUpSpeed = 5;
+        PowerUpPictureBox = new PictureBox
+        {
+            Width = width,
+            Height = height,
+            Left = x,
+            Top = y,
+            BackColor = powerUpType == PowerUpType.SlowBall ? Color.Blue : Color.Red
+        };
+    }
+}
+
+public enum PowerUpType
+{
+    SlowBall,
+    ExpandPaddle
 }

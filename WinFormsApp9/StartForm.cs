@@ -100,12 +100,13 @@ namespace WinFormsApp9
             numericUpDownPowerUpCount = new NumericUpDown()
             {
                 Minimum = 0,
-                Maximum = 10,
+                Maximum = 60, // Zmieniono limit na 60
                 Value = 3,
                 Left = (this.ClientSize.Width / 2) - 100,
                 Top = (this.ClientSize.Height / 2) - 175
             };
             this.Controls.Add(numericUpDownPowerUpCount);
+
 
             // ComboBox for difficulty levels
             difficultyComboBox = new ComboBox()
